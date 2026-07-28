@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Malla Ingeniería en Informática · FP-UNA 2008</title>
+<style>
+  :root {
+    --ink:      #1A2028;
+    --ink-soft: #5C6672;
+    --ink-faint:#9AA3AD;
+    --paper:    #F4F6F4;
+    --card:     #FFFFFF;
+    --line:     #DDE2DE;
+    --line-dark:#BCC4BD;
+
+    --bas: #2F63A0;  --bas-bg: #E8EFF7;
+    --tec: #10715A;  --tec-bg: #E2F3EC;
+    --com: #7A4A6B;  --com-bg: #F5EAF1;
+    --alert: #9A5B00;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; padding: 24px 20px 60px;
+    background: var(--paper); color: var(--ink);
+    font-family: var(--sans); font-size: 15px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header { max-width: 880px; margin-bottom: 20px; }
+  h1 { font-size: 21px; font-weight: 500; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--ink-soft); font-size: 13.5px; margin: 0; }
+
+  /* ---------- panel ---------- */
+  .bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 20px;
+    padding: 13px 16px; margin: 18px 0 14px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  }
+  .meter { min-width: 220px; }
+  .meter-top {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); margin-bottom: 6px;
+  }
+  .meter-top b { font-size: 15px; font-weight: 500; color: var(--ink); }
+  .track { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; display: flex; }
+  .track i { height: 100%; width: 0; display: block; transition: width .35s ease; }
+  .track .sb { background: var(--bas); }
+  .track .st { background: var(--tec); }
+  .track .sc { background: var(--com); }
+
+  .tally { display: flex; gap: 14px; font-size: 12.5px; color: var(--ink-soft); font-family: var(--mono); }
+  .tally b { font-weight: 500; color: var(--ink); }
+
+  .ctl { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--ink-soft); cursor: pointer; }
+  .ctl input { accent-color: var(--tec); width: 15px; height: 15px; }
+
+  .saved { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-left: auto; }
+
+  button.reset {
+    font: inherit; font-size: 13.5px;
+    background: none; color: var(--ink-soft);
+    border: 1px solid var(--line-dark); border-radius: 7px;
+    padding: 6px 13px; cursor: pointer;
+  }
+  button.reset:hover { color: var(--ink); border-color: var(--ink-soft); }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 6px 18px;
+    font-size: 12.5px; color: var(--ink-soft); margin-bottom: 12px;
+  }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .dot.b { background: var(--bas); } .dot.t { background: var(--tec); } .dot.c { background: var(--com); }
+  .sep { color: var(--line-dark); }
+
+  .msg { font-size: 13px; color: var(--alert); min-height: 20px; margin: 0 0 10px; }
+
+  /* ---------- tablero ---------- */
+  .scroll { overflow-x: auto; padding-bottom: 16px; }
+  .canvas { position: relative; display: inline-block; min-width: 100%; }
+  .wires { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; }
+
+  .board { display: flex; gap: 34px; position: relative; }
+  .col { flex: 0 0 178px; }
+  .col-head {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-faint);
+    padding-bottom: 7px; margin-bottom: 11px;
+    border-bottom: 1px solid var(--line-dark);
+    display: flex; justify-content: space-between;
+  }
+
+  .card {
+    display: block; width: 100%; text-align: left; font: inherit; cursor: pointer;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--line-dark);
+    border-radius: 7px;
+    padding: 8px 10px; margin-bottom: 10px;
+    position: relative;
+    transition: opacity .18s, background .18s, border-color .18s, box-shadow .18s;
+  }
+  .card:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .row1 {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 11px; color: var(--ink-faint); letter-spacing: .03em;
+  }
+  .name { font-size: 13px; line-height: 1.28; margin: 4px 0 5px; }
+  .row3 {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint);
+  }
+  .opens { color: var(--ink-soft); white-space: nowrap; }
+  .mark { font-family: var(--sans); font-weight: 500; font-size: 12px; }
+
+  .card.b { border-left-color: var(--bas); } .card.b .row1 { color: var(--bas); }
+  .card.t { border-left-color: var(--tec); } .card.t .row1 { color: var(--tec); }
+  .card.c { border-left-color: var(--com); } .card.c .row1 { color: var(--com); }
+
+  .card.locked { opacity: .40; border-style: dashed; border-left-style: solid; }
+  .card.open   { border-color: var(--line-dark); box-shadow: 0 1px 2px rgba(26,32,40,.06); }
+  .card.open:hover { border-color: var(--ink-soft); }
+  .card.done.b { background: var(--bas-bg); border-color: var(--bas); }
+  .card.done.t { background: var(--tec-bg); border-color: var(--tec); }
+  .card.done.c { background: var(--com-bg); border-color: var(--com); }
+  .card.done .name { font-weight: 500; }
+  .card.done.b .name, .card.done.b .row3 { color: var(--bas); }
+  .card.done.t .name, .card.done.t .row3 { color: var(--tec); }
+  .card.done.c .name, .card.done.c .row3 { color: var(--com); }
+
+  .canvas.tracing .card { opacity: .18; }
+  .canvas.tracing .card.up, .canvas.tracing .card.down, .canvas.tracing .card.self { opacity: 1; }
+  .canvas.tracing .card.self { border-color: var(--ink); box-shadow: 0 0 0 2px rgba(26,32,40,.12); }
+  .canvas.tracing .card.down { border-color: var(--alert); }
+
+  .w { fill: none; stroke: var(--line-dark); stroke-width: .9; opacity: .16; transition: opacity .2s, stroke .2s, stroke-width .2s; }
+  .w.flow { stroke: var(--tec); stroke-width: 1.7; opacity: 1; }
+  .canvas.tracing .w { opacity: .05; }
+  .canvas.tracing .w.lit { opacity: 1; stroke-width: 2.2; stroke: var(--ink); }
+  .canvas.tracing .w.lit.fwd { stroke: var(--alert); }
+
+  @keyframes pop { 0%,100% { transform: none; } 45% { transform: translateX(4px); } }
+  .card.just { animation: pop .34s ease; }
+  @media (prefers-reduced-motion: reduce) { .card.just { animation: none; } .track i { transition: none; } }
+
+  /* ---------- editor ---------- */
+  .canvas.editing .card { cursor: cell; }
+  .canvas.editing .card.locked { opacity: .7; }
+  .card .pm { color: var(--alert); font-family: var(--mono); }
+
+  dialog {
+    border: 1px solid var(--line-dark); border-radius: 12px;
+    padding: 0; max-width: 430px; width: 92vw;
+    color: var(--ink); background: var(--card);
+    box-shadow: 0 18px 44px rgba(26,32,40,.18);
+  }
+  dialog::backdrop { background: rgba(26,32,40,.34); }
+  .ed { padding: 18px 20px 16px; }
+  .ed h2 { font-size: 15px; font-weight: 500; margin: 2px 0 0; }
+  .edCod { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); }
+  .ed h3 {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-faint);
+    margin: 18px 0 8px; font-weight: 400;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip2 {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--mono); font-size: 11.5px;
+    background: var(--tec-bg); color: var(--tec);
+    border: 1px solid var(--tec); border-radius: 20px;
+    padding: 3px 5px 3px 10px;
+  }
+  .chip2 button {
+    border: none; background: none; color: inherit; cursor: pointer;
+    font: inherit; font-size: 15px; line-height: 1; padding: 0 3px; opacity: .65;
+  }
+  .chip2 button:hover { opacity: 1; }
+  .vacio { font-size: 12.5px; color: var(--ink-faint); font-style: italic; }
+
+  .ed select, .ed input[type=number] {
+    font: inherit; font-size: 13px; color: var(--ink);
+    border: 1px solid var(--line-dark); border-radius: 7px;
+    padding: 6px 8px; background: var(--card);
+  }
+  .ed select { width: 100%; margin-top: 9px; }
+  .edRow { display: flex; align-items: center; gap: 9px; margin-top: 9px; font-size: 13px; color: var(--ink-soft); }
+  .edRow input[type=number] { width: 80px; }
+  .edRow input[type=checkbox] { accent-color: var(--tec); width: 15px; height: 15px; }
+  .edAviso { font-size: 12.5px; color: var(--alert); min-height: 18px; margin-top: 10px; }
+
+  .edBtns { display: flex; gap: 8px; margin-top: 14px; }
+  .edBtns button {
+    font: inherit; font-size: 13.5px; cursor: pointer;
+    border-radius: 7px; padding: 7px 13px;
+    border: 1px solid var(--line-dark); background: none; color: var(--ink-soft);
+  }
+  .edBtns button:hover { color: var(--ink); border-color: var(--ink-soft); }
+  .edBtns .ok { margin-left: auto; background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  footer {
+    max-width: 760px; margin-top: 30px; padding-top: 16px;
+    border-top: 1px solid var(--line-dark);
+    font-size: 12.5px; color: var(--ink-soft); line-height: 1.65;
+  }
+  footer b { font-weight: 500; color: var(--ink); }
+  .flag {
+    font-family: var(--mono); font-size: 9.5px;
+    border: 1px solid var(--alert); color: var(--alert);
+    border-radius: 3px; padding: 0 3px; margin-left: 4px;
+  }
+
+  /* ---------- celular ---------- */
+  @media (max-width: 900px) {
+    body { padding: 18px 14px 48px; }
+    h1 { font-size: 19px; }
+
+    .bar { gap: 13px; padding: 12px 13px; }
+    .meter { flex: 1 1 100%; min-width: 0; }
+    .tally { flex: 1 1 100%; justify-content: space-between; }
+    .ctl { flex: 1 1 100%; }
+    .saved { margin-left: 0; flex: 1 1 100%; }
+    button.reset { width: 100%; }
+
+    .scroll { overflow-x: visible; padding-bottom: 0; }
+    .canvas { display: block; }
+    .wires { display: none; }
+
+    .board { flex-direction: column; gap: 26px; }
+    .col { flex: none; width: 100%; }
+    .col-head { font-size: 11.5px; margin-bottom: 9px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; }
+    .card { margin-bottom: 0; }
+    .opens { text-decoration: underline; text-underline-offset: 2px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Ingeniería en Informática · malla 2008</h1>
+  <p class="sub">Facultad Politécnica — UNA. Tocá una materia para aprobarla y sus conexiones se encienden. Pasá el mouse por una tarjeta para aislar su linaje completo.</p>
+</header>
+
+<div class="bar">
+  <div class="meter">
+    <div class="meter-top"><span>créditos aprobados</span><span><b id="cr">0</b> / 337 · <span id="pc">0,0 %</span></span></div>
+    <div class="track"><i class="sb" id="fb"></i><i class="st" id="ft"></i><i class="sc" id="fc"></i></div>
+  </div>
+  <div class="tally">
+    <span><b id="nDone">0</b> aprobadas</span>
+    <span><b id="nOpen">0</b> disponibles</span>
+    <span><b id="nLock">0</b> bloqueadas</span>
+  </div>
+  <label class="ctl"><input type="checkbox" id="pas"> 300 h de pasantía</label>
+  <label class="ctl"><input type="checkbox" id="edit"> editar prerrequisitos</label>
+  <span class="saved" id="saved"></span>
+  <button class="reset" id="reset">Empezar de nuevo</button>
+</div>
+
+<div class="legend">
+  <span><i class="dot b"></i> básica</span>
+  <span><i class="dot t"></i> tecnológica</span>
+  <span><i class="dot c"></i> complementaria</span>
+  <span class="sep">|</span>
+  <span>○ disponible</span>
+  <span>✓ aprobada</span>
+  <span>· bloqueada</span>
+  <span class="sep">|</span>
+  <span><span class="pm">±</span> prerrequisito editado</span>
+</div>
+
+<p class="msg" id="msg"></p>
+
+<div class="scroll">
+  <div class="canvas" id="canvas">
+    <svg class="wires" id="wires"></svg>
+    <div class="board" id="board"></div>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <div class="ed">
+    <div class="edCod" id="edCod"></div>
+    <h2 id="edNom"></h2>
+
+    <h3>Prerrequisitos</h3>
+    <div class="chips" id="edChips"></div>
+    <select id="edAdd"></select>
+
+    <h3>Requisito por créditos</h3>
+    <div class="edRow">
+      <input type="number" id="edPct" min="0" max="100" step="1" placeholder="—">
+      <span>% de la carrera (vacío = no aplica)</span>
+    </div>
+    <label class="edRow"><input type="checkbox" id="edPas"> exige las 300 h de pasantía</label>
+
+    <p class="edAviso" id="edAviso"></p>
+
+    <div class="edBtns">
+      <button id="edOfi">Restaurar oficial</button>
+      <button class="ok" id="edOk">Listo</button>
+    </div>
+  </div>
+</dialog>
+
+<footer>
+  <p><b>Fuente:</b> Plan Curricular 2008 (FP-UNA). Total: 337 créditos — 110 básicos, 191 tecnológicos, 36 complementarios.</p>
+  <p><b>Incluye la Resolución 13/26/20-00</b>, que modificó tres prerrequisitos: Algoritmos III suma Lenguajes de Programación I; Ingeniería de Software II deja de requerir Redes II; Gestión de Centros de Cómputos pasa a exigir 70 % de créditos más las 300 h de pasantía. El Proyecto Final de Grado <span class="flag">?</span> sale de la imagen de la malla, no de las tablas del plan.</p>
+</footer>
+
+<script>
+const TOTAL = 337;
+
+/* código, nombre, créditos, área, prerrequisitos, extras */
+const M = [
+  ['1.1','Fundamentos de matemática',7,'b',[]],
+  ['1.2','Matemática discreta',7,'b',[]],
+  ['1.3','Org. y arq. de computadoras I',7,'t',[]],
+  ['1.4','Algoritmos y est. de datos I',9,'t',[]],
+  ['1.5','Expresión oral y escrita',4,'c',[]],
+  ['1.6','Emprendedorismo',4,'c',[]],
+
+  ['2.1','Álgebra lineal',7,'b',['1.1','1.2']],
+  ['2.2','Cálculo I',7,'b',['1.1']],
+  ['2.3','Org. y arq. de computadoras II',7,'t',['1.3']],
+  ['2.4','Lenguajes de programación I',7,'t',['1.2','1.4']],
+  ['2.5','Algoritmos y est. de datos II',7,'t',['1.4']],
+  ['2.6','Inglés',4,'c',[]],
+
+  ['3.1','Lógica para Cs. de la Computación',7,'b',['1.2','2.5']],
+  ['3.2','Cálculo II',7,'b',['2.2']],
+  ['3.3','Física 1',7,'b',['1.1']],
+  ['3.4','Lenguajes de programación II',7,'t',['2.4','2.5']],
+  ['3.5','Algoritmos y est. de datos III',7,'t',['2.4','2.5']],
+  ['3.6','Contabilidad',4,'c',[]],
+
+  ['4.1','Probabilidades y estadística',7,'b',['3.2']],
+  ['4.2','Cálculo III',7,'b',['3.2']],
+  ['4.3','Física 2',7,'b',['3.3']],
+  ['4.4','Redes de computadoras I',7,'t',['1.3','2.5']],
+  ['4.5','Sistemas operativos',7,'t',['2.3','3.5']],
+  ['4.6','Economía y finanzas',4,'c',[]],
+
+  ['5.1','Física 3',7,'b',['4.3']],
+  ['5.2','Investigación de operaciones I',7,'b',['2.1','3.2']],
+  ['5.3','Redes de computadoras II',7,'t',['2.3','4.3','4.4']],
+  ['5.4','Lenguajes de programación III',7,'t',['3.4','4.5']],
+  ['5.5','Sistemas distribuidos',7,'t',['3.4','4.4','4.5']],
+  ['5.6','Técnicas de organización y métodos',4,'c',[]],
+
+  ['6.1','Métodos numéricos',7,'b',['2.1','4.2']],
+  ['6.2','Estructura de los lenguajes',7,'t',['5.4']],
+  ['6.3','Ingeniería de software I',7,'t',['3.4']],
+  ['6.4','Bases de datos I',7,'t',['3.1','3.4']],
+  ['6.5','Física 4',5,'b',['4.3']],
+
+  ['7.1','Matemática aplicada',7,'b',['2.1','3.1']],
+  ['7.2','Investigación de operaciones II',7,'b',['5.2','6.1']],
+  ['7.3','Ingeniería de software II',7,'t',['6.3','6.4']],
+  ['7.4','Optativa 1',4,'c',[]],
+  ['7.5','Electiva 1',7,'t',[],{pct:55}],
+
+  ['8.1','Ingeniería de software III',7,'t',['7.3']],
+  ['8.2','Bases de datos II',7,'t',['6.4']],
+  ['8.3','Optativa 2',4,'c',[]],
+  ['8.4','Electiva 2',7,'t',[],{pct:70}],
+  ['8.5','Electiva 3',7,'t',[],{pct:70}],
+
+  ['9.1','Gestión de centros de cómputos',7,'t',[],{pct:70,pas:1}],
+  ['9.2','Optativa 3',4,'c',[]],
+  ['9.3','Electiva 4',7,'t',[],{pct:70,pas:1}],
+  ['9.4','Electiva 5',7,'t',[],{pct:70,pas:1}],
+  ['9.5','Proyecto final de grado I',0,'t',[],{pct:85,dudoso:1}],
+
+  ['10.1','Diseño de compiladores',7,'t',['3.5','6.2']],
+  ['10.2','Electiva 6',7,'t',[],{pct:80,pas:1}],
+  ['10.3','Electiva 7',7,'t',[],{pct:80,pas:1}],
+  ['10.4','Proyecto final de grado II',0,'t',[],{pct:85,dudoso:1}]
+];
+
+const CODS = M.map(m => m[0]);
+const data = {}, deps = {}, OFICIAL = {};
+
+M.forEach(([c,n,cr,a,p,o]) => {
+  data[c] = { c, n, cr, a, p: [...p], ...(o||{}) };
+  deps[c] = [];
+  OFICIAL[c] = { p: [...p].sort(), pct: (o && o.pct) || null, pas: (o && o.pas) ? 1 : 0 };
+});
+
+let edits = {};
+const done = new Set();
+let pasOk = false;
+let modoEdicion = false;
+
+/* ---------- grafo ---------- */
+function reconstruirDeps() {
+  CODS.forEach(c => deps[c] = []);
+  CODS.forEach(c => data[c].p.forEach(q => { if (deps[q]) deps[q].push(c); }));
+}
+
+function aplicarEdits() {
+  CODS.forEach(c => {
+    const s = edits[c] || OFICIAL[c];
+    data[c].p   = [...s.p].sort();
+    data[c].pct = s.pct || undefined;
+    data[c].pas = s.pas || undefined;
+  });
+  reconstruirDeps();
+}
+
+function ancestros(c) {
+  const v = new Set();
+  (function sub(x) { data[x].p.forEach(q => { if (!v.has(q)) { v.add(q); sub(q); } }); })(c);
+  return v;
+}
+function descendientes(c) {
+  const v = new Set();
+  (function baj(x) { (deps[x]||[]).forEach(q => { if (!v.has(q)) { v.add(q); baj(q); } }); })(c);
+  return v;
+}
+const haciaCiclo = (c, q) => q === c || ancestros(q).has(c);
+
+/* ---------- reglas ---------- */
+const creditos = set => [...set].reduce((s,c) => s + data[c].cr, 0);
+
+function falta(m, set) {
+  const miss = m.p.filter(q => !set.has(q));
+  if (miss.length) return 'falta ' + miss.map(q => q + ' ' + data[q].n).join(', ');
+  if (m.pct) {
+    const pct = creditos(set) / TOTAL * 100;
+    if (pct < m.pct) return 'necesita ' + m.pct + ' % de créditos (llevás ' + pct.toFixed(1).replace('.',',') + ' %)';
+  }
+  if (m.pas && !pasOk) return 'necesita las 300 h de pasantía';
+  return null;
+}
+const libre = (m, set) => falta(m, set) === null;
+
+function estabilizar() {
+  let cambio = true;
+  while (cambio) {
+    cambio = false;
+    for (const c of [...done]) {
+      const otros = new Set(done); otros.delete(c);
+      if (!libre(data[c], otros)) { done.delete(c); cambio = true; }
+    }
+  }
+}
+
+/* ---------- construcción ---------- */
+const canvas = document.getElementById('canvas');
+const board  = document.getElementById('board');
+const wires  = document.getElementById('wires');
+const dlg    = document.getElementById('dlg');
+const cards  = {};
+const paths  = [];
+const sems   = [...new Set(CODS.map(c => c.split('.')[0]))];
+
+sems.forEach(s => {
+  const lista = CODS.filter(c => c.split('.')[0] === s);
+  const col = document.createElement('div');
+  col.className = 'col';
+  col.innerHTML =
+    '<div class="col-head"><span>Sem ' + s + '</span><span>' +
+    lista.reduce((a,c) => a + data[c].cr, 0) + ' cr</span></div><div class="cards"></div>';
+  const caja = col.querySelector('.cards');
+
+  lista.forEach(c => {
+    const m = data[c];
+    const b = document.createElement('button');
+    b.className = 'card ' + m.a;
+    b.dataset.c = c;
+    b.innerHTML =
+      '<span class="row1"><span>' + c + (m.dudoso ? '<span class="flag">?</span>' : '') +
+        '<span class="pm"></span></span><span class="mark"></span></span>' +
+      '<span class="name">' + m.n + '</span>' +
+      '<span class="row3"><span class="req"></span><span class="opens"></span></span>';
+
+    b.addEventListener('click', e => {
+      if (modoEdicion) { abrirEditor(c); return; }
+      if (e.target.closest('.opens') && deps[c].length) { listar(c); return; }
+      alternar(c);
+    });
+    b.addEventListener('mouseenter', () => trazar(c));
+    b.addEventListener('focus', () => trazar(c));
+    b.addEventListener('mouseleave', limpiar);
+    b.addEventListener('blur', limpiar);
+
+    caja.appendChild(b);
+    cards[c] = b;
+  });
+  board.appendChild(col);
+});
+
+/* ---------- cables ---------- */
+const NS = 'http://www.w3.org/2000/svg';
+const esMovil = () => window.matchMedia('(max-width: 900px)').matches;
+
+function dibujar() {
+  wires.innerHTML = '';
+  paths.length = 0;
+  if (esMovil()) return;
+
+  const cr = canvas.getBoundingClientRect();
+  wires.setAttribute('width',  canvas.offsetWidth);
+  wires.setAttribute('height', canvas.offsetHeight);
+
+  CODS.forEach(c => {
+    data[c].p.forEach(q => {
+      if (!cards[q]) return;
+      const a = cards[q].getBoundingClientRect();
+      const b = cards[c].getBoundingClientRect();
+      const x1 = a.right - cr.left,     y1 = a.top - cr.top + a.height / 2;
+      const x2 = b.left  - cr.left - 4, y2 = b.top - cr.top + b.height / 2;
+      const dx = Math.max(20, (x2 - x1) * 0.45);
+      const path = document.createElementNS(NS, 'path');
+      path.setAttribute('d', 'M' + x1 + ' ' + y1 + ' C' + (x1+dx) + ' ' + y1 +
+                             ',' + (x2-dx) + ' ' + y2 + ',' + x2 + ' ' + y2);
+      path.setAttribute('class', 'w');
+      path.dataset.from = q;
+      path.dataset.to = c;
+      wires.appendChild(path);
+      paths.push(path);
+    });
+  });
+  colorearCables();
+}
+const colorearCables = () => paths.forEach(p => p.classList.toggle('flow', done.has(p.dataset.from)));
+
+/* ---------- interacción ---------- */
+const msg = t => document.getElementById('msg').textContent = t;
+const listar = c => msg(c + ' ' + data[c].n + ' habilita: ' +
+                        deps[c].map(x => x + ' ' + data[x].n).join(', ') + '.');
+
+function alternar(c) {
+  const m = data[c];
+  if (done.has(c)) {
+    const antes = new Set(done);
+    done.delete(c);
+    estabilizar();
+    const caidas = [...antes].filter(x => !done.has(x) && x !== c);
+    msg(caidas.length
+      ? 'Desmarcaste ' + c + '. También se desaprobaron: ' + caidas.join(', ') + '.'
+      : 'Desmarcaste ' + c + ' ' + m.n + '.');
+  } else {
+    const motivo = falta(m, done);
+    if (motivo) { msg(c + ' ' + m.n + ' — ' + motivo + '.'); return; }
+    const antesLibres = new Set(CODS.filter(x => !done.has(x) && libre(data[x], done)));
+    done.add(c);
+    const nuevas = CODS.filter(x => !done.has(x) && libre(data[x], done) && !antesLibres.has(x));
+    msg(nuevas.length
+      ? 'Aprobaste ' + c + ' → se habilita ' + nuevas.map(x => x + ' ' + data[x].n).join(', ') + '.'
+      : 'Aprobaste ' + c + ' ' + m.n + '. Todavía no habilita nada nuevo.');
+    nuevas.forEach(x => {
+      cards[x].classList.remove('just');
+      void cards[x].offsetWidth;
+      cards[x].classList.add('just');
+    });
+  }
+  actualizar();
+}
+
+function actualizar() {
+  let nd = 0, no = 0, nl = 0;
+  const porArea = { b:0, t:0, c:0 };
+
+  CODS.forEach(c => {
+    const m = data[c], b = cards[c];
+    const ap = done.has(c);
+    const otros = new Set(done); otros.delete(c);
+    const ok = libre(m, otros);
+
+    b.classList.remove('done','open','locked');
+    b.classList.add(ap ? 'done' : ok ? 'open' : 'locked');
+    b.setAttribute('aria-pressed', ap);
+    b.querySelector('.mark').textContent = ap ? '✓' : ok ? '○' : '·';
+    b.querySelector('.pm').textContent = edits[c] ? ' ±' : '';
+
+    let req = m.p.length ? m.p.join(' · ') : (m.pct ? m.pct + ' % cr' : '—');
+    if (m.pas) req += ' + pas';
+    b.querySelector('.req').textContent = req;
+    b.querySelector('.opens').textContent = deps[c].length ? 'abre ' + deps[c].length : '';
+
+    if (ap) { nd++; porArea[m.a] += m.cr; } else if (ok) no++; else nl++;
+  });
+
+  document.getElementById('nDone').textContent = nd;
+  document.getElementById('nOpen').textContent = no;
+  document.getElementById('nLock').textContent = nl;
+
+  const cr = creditos(done), pct = cr / TOTAL * 100;
+  document.getElementById('cr').textContent = cr;
+  document.getElementById('pc').textContent = pct.toFixed(1).replace('.',',') + ' %';
+  document.getElementById('fb').style.width = (porArea.b / TOTAL * 100) + '%';
+  document.getElementById('ft').style.width = (porArea.t / TOTAL * 100) + '%';
+  document.getElementById('fc').style.width = (porArea.c / TOTAL * 100) + '%';
+
+  colorearCables();
+  guardar();
+}
+
+/* ---------- linaje ---------- */
+function trazar(c) {
+  if (esMovil() || modoEdicion) return;
+  const up = ancestros(c), down = descendientes(c);
+
+  canvas.classList.add('tracing');
+  up.forEach(x => cards[x].classList.add('up'));
+  down.forEach(x => cards[x].classList.add('down'));
+  cards[c].classList.add('self');
+
+  const arriba = new Set([...up, c]), abajo = new Set([...down, c]);
+  paths.forEach(p => {
+    if (arriba.has(p.dataset.from) && arriba.has(p.dataset.to)) p.classList.add('lit');
+    else if (abajo.has(p.dataset.from) && abajo.has(p.dataset.to)) p.classList.add('lit','fwd');
+  });
+}
+function limpiar() {
+  canvas.classList.remove('tracing');
+  Object.values(cards).forEach(b => b.classList.remove('up','down','self'));
+  paths.forEach(p => p.classList.remove('lit','fwd'));
+}
+
+/* ---------- editor ---------- */
+let editando = null;
+
+function abrirEditor(c) { editando = c; pintarEditor(); dlg.showModal(); }
+
+function pintarEditor() {
+  const c = editando, m = data[c];
+  document.getElementById('edCod').textContent = 'Semestre ' + c.split('.')[0] + ' · ' + c;
+  document.getElementById('edNom').textContent = m.n;
+
+  const chips = document.getElementById('edChips');
+  chips.innerHTML = '';
+  if (!m.p.length) chips.innerHTML = '<span class="vacio">sin prerrequisitos</span>';
+  m.p.forEach(q => {
+    const el = document.createElement('span');
+    el.className = 'chip2';
+    el.innerHTML = '<span>' + q + ' ' + data[q].n + '</span>';
+    const x = document.createElement('button');
+    x.textContent = '×';
+    x.title = 'quitar';
+    x.addEventListener('click', () => cambiar(c, { p: m.p.filter(y => y !== q) }));
+    el.appendChild(x);
+    chips.appendChild(el);
+  });
+
+  const sel = document.getElementById('edAdd');
+  const libres = CODS.filter(q => !m.p.includes(q) && !haciaCiclo(c, q));
+  sel.innerHTML = '<option value="">+ agregar prerrequisito…</option>' +
+    libres.map(q => '<option value="' + q + '">' + q + ' · ' + data[q].n + '</option>').join('');
+  sel.value = '';
+
+  document.getElementById('edPct').value = m.pct || '';
+  document.getElementById('edPas').checked = !!m.pas;
+
+  const bloq = CODS.length - 1 - libres.length;
+  document.getElementById('edAviso').textContent = edits[c]
+    ? 'Editada. ' + (bloq ? bloq + ' materia(s) no se ofrecen porque generarían un ciclo.' : '')
+    : (bloq ? bloq + ' materia(s) no se ofrecen porque generarían un ciclo.' : '');
+}
+
+function cambiar(c, parche) {
+  const base = edits[c] || OFICIAL[c];
+  const nuevo = {
+    p:   (parche.p   !== undefined ? parche.p   : base.p).slice().sort(),
+    pct: (parche.pct !== undefined ? parche.pct : base.pct) || null,
+    pas: (parche.pas !== undefined ? parche.pas : base.pas) ? 1 : 0
+  };
+  if (JSON.stringify(nuevo) === JSON.stringify(OFICIAL[c])) delete edits[c];
+  else edits[c] = nuevo;
+
+  guardarEdits();
+  aplicarEdits();
+  estabilizar();
+  actualizar();
+  dibujar();
+  pintarEditor();
+  msg('Prerrequisitos de ' + c + ' actualizados.');
+}
+
+document.getElementById('edAdd').addEventListener('change', e => {
+  if (!e.target.value) return;
+  cambiar(editando, { p: [...data[editando].p, e.target.value] });
+});
+document.getElementById('edPct').addEventListener('change', e => {
+  const v = parseInt(e.target.value, 10);
+  cambiar(editando, { pct: (isNaN(v) || v <= 0) ? null : Math.min(100, v) });
+});
+document.getElementById('edPas').addEventListener('change', e => {
+  cambiar(editando, { pas: e.target.checked ? 1 : 0 });
+});
+document.getElementById('edOfi').addEventListener('click', () => {
+  delete edits[editando];
+  guardarEdits(); aplicarEdits(); estabilizar(); actualizar(); dibujar(); pintarEditor();
+  msg(editando + ' volvió a sus prerrequisitos oficiales.');
+});
+document.getElementById('edOk').addEventListener('click', () => dlg.close());
+
+/* ---------- persistencia ---------- */
+const CLAVE = 'malla-iin-2008', CLAVE_ED = 'malla-iin-2008-edits';
+let hayLocal = true;
+
+const serializar = () => [...done].sort().join(',') + (pasOk ? '|p' : '');
+
+function guardar() {
+  const s = serializar();
+  try { localStorage.setItem(CLAVE, s); } catch (e) { hayLocal = false; }
+  try { history.replaceState(null, '', s ? '#' + s : location.pathname + location.search); } catch (e) {}
+  const ne = Object.keys(edits).length;
+  document.getElementById('saved').textContent =
+    (done.size ? done.size + ' guardadas' : 'sin datos guardados') +
+    (ne ? ' · ' + ne + ' editada' + (ne > 1 ? 's' : '') : '') +
+    (hayLocal ? '' : ' · solo en la URL');
+}
+
+function guardarEdits() { try { localStorage.setItem(CLAVE_ED, JSON.stringify(edits)); } catch (e) {} }
+
+function cargarEdits() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CLAVE_ED) || '{}');
+    Object.keys(raw).forEach(c => {
+      if (!data[c] || !Array.isArray(raw[c].p)) return;
+      edits[c] = { p: raw[c].p.filter(q => data[q]).sort(), pct: raw[c].pct || null, pas: raw[c].pas ? 1 : 0 };
+    });
+  } catch (e) { edits = {}; }
+}
+
+function cargarProgreso() {
+  let s = decodeURIComponent(location.hash.slice(1));
+  if (!s) { try { s = localStorage.getItem(CLAVE) || ''; } catch (e) { hayLocal = false; } }
+  if (!s) return;
+  const [lista, flag] = s.split('|');
+  pasOk = flag === 'p';
+  document.getElementById('pas').checked = pasOk;
+  lista.split(',').filter(c => data[c]).forEach(c => done.add(c));
+  estabilizar();
+}
+
+/* ---------- controles ---------- */
+document.getElementById('pas').addEventListener('change', e => {
+  pasOk = e.target.checked; estabilizar(); actualizar(); msg('');
+});
+document.getElementById('edit').addEventListener('change', e => {
+  modoEdicion = e.target.checked;
+  canvas.classList.toggle('editing', modoEdicion);
+  limpiar();
+  msg(modoEdicion ? 'Modo edición: tocá una materia para cambiar sus prerrequisitos.' : '');
+});
+document.getElementById('reset').addEventListener('click', () => {
+  if (done.size && !confirm('Se borran todas las materias marcadas. Los prerrequisitos editados se conservan. ¿Seguir?')) return;
+  done.clear(); pasOk = false;
+  document.getElementById('pas').checked = false;
+  try { localStorage.removeItem(CLAVE); } catch (e) {}
+  actualizar(); msg('');
+});
+
+/* ---------- arranque ---------- */
+cargarEdits();
+aplicarEdits();
+cargarProgreso();
+actualizar();
+dibujar();
+window.addEventListener('resize', dibujar);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(dibujar);
+</script>
+</body>
+</html>
